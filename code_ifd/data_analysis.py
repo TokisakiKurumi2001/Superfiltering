@@ -3,6 +3,7 @@ import json
 import torch
 import argparse
 from tqdm import tqdm
+from loguru import logger
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
@@ -74,24 +75,26 @@ def get_perplexity_and_embedding_part_text(tokenizer, model, text, target_span, 
 
 
 def main():
-
     args = parse_args()
     print(args)
 
-    model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, device_map="auto", cache_dir='../cache', output_hidden_states=True)
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path, cache_dir='../cache')
+    model = AutoModelForCausalLM.from_pretrained(args.model_name_or_path, device_map="auto", output_hidden_states=True)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name_or_path)
 
     model.eval()
 
-    with open(args.data_path, "r") as f:
-        data = json.load(f)
+    data = []
+    with open(args.data_path) as fin:
+        for line in fin:
+            d = json.loads(line)
+            data.append(d)
 
     start_idx = args.start_idx
     end_idx = args.end_idx if args.end_idx != -1 else len(data)
     sampled_data = data[start_idx:end_idx]
 
     if not os.path.exists(args.save_path):
-        with open(args.save_path, "w") as file:
+        with open(args.save_path, "w+") as file:
             pass  # Creates an empty file
 
     with open(args.save_path, "r") as file:
@@ -106,25 +109,16 @@ def main():
     for i in tqdm(range(len(sampled_data))):
 
         data_i = sampled_data[i]
-        instruct_i = data_i['instruction']
+        instruct_i = data_i['prompt']
         output_i = data_i['output']
 
-        input_i = data_i['input'] if 'input' in data_i.keys() else ''
-        if input_i == '':
-            temp_dict = {'instruction':instruct_i}
-            promt_to_use = prompt_no_input.format_map(temp_dict)
-            whole_text = promt_to_use + output_i
-            instruct_i = promt_to_use
-
-        else:
-            temp_dict = {'instruction':instruct_i,'input':input_i}
-            promt_to_use = prompt_input.format_map(temp_dict)
-            whole_text = promt_to_use + output_i
-            instruct_i = promt_to_use
-
+        temp_dict = {'instruction':instruct_i}
+        promt_to_use = prompt_no_input.format_map(temp_dict)
+        whole_text = promt_to_use + output_i
+        instruct_i = promt_to_use
 
         instruct_i_input_ids = tokenizer.encode(instruct_i, return_tensors="pt", truncation=True, max_length=args.max_length).to(device)
-        instruct_i_len = instruct_i_input_ids.shape[1] 
+        instruct_i_len = instruct_i_input_ids.shape[1]
 
         if output_i == '':
             temp_data_i = {}
@@ -136,10 +130,10 @@ def main():
             temp_data_i['ppl'] = [0,ppl_out_alone,0,ppl_out_condition]
             temp_data_i['loss'] = [0,loss_out_alone,0,loss_out_condition]
 
-        with open(args.save_path, "a") as file:
-            file.write(json.dumps(temp_data_i) + '\n')
+        with open(args.save_path, "a") as fout:
+            fout.write(json.dumps(temp_data_i) + '\n')
     
-    print('Done: Data Analysis:',args.data_path)
+    logger.success(f'Done! Data Analysis is saved at {args.data_path}')
 
 if __name__ == "__main__":
     main()
