@@ -1,6 +1,6 @@
 
 python code_ifd/put_analysis_to_data.py \
-    --pt_data_path alpaca_data_gpt2_scores.jsonl \
-    --json_data_path data/alpaca_data.json \
-    --json_save_path alpaca_data_gpt2_data.json
+    --pt_data_path ppl_score.jsonl \
+    --json_data_path data_dir/syn.jsonl \
+    --json_save_path data_dir/syn_with_ifd_score.jsonl
 

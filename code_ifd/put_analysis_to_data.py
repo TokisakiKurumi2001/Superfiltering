@@ -23,8 +23,11 @@ def main():
             for line in file:
                 pt_data.append(json.loads(line.strip()))
 
-    with open(args.json_data_path, "r") as f:
-        json_data = json.load(f)
+    json_data = []
+    with open(args.json_data_path, 'r') as fin:
+        for line in fin:
+            d = json.loads(line)
+            json_data.append(d)
 
     assert len(json_data) == len(pt_data)
 
@@ -53,8 +56,10 @@ def main():
         new_data.append(json_data_i)
 
     print('New data len \n',len(new_data))
-    with open(args.json_save_path, "w") as fw:
-        json.dump(new_data, fw, indent=4)
+
+    with open(args.json_save_path, "w+") as fout:
+        for d in new_data:
+            fout.write(json.dumps(d) + "\n")
     
 
 if __name__ == '__main__':
